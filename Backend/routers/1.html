@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accounts: sales and purchase</title>
+<style>
+:root{--bg:#eef2f6;--panel:#fff;--ink:#14202b;--muted:#5d6b78;--line:#dbe3ea;--sales:#0e7c6b;--sales2:#2bb59c;--sales-soft:#dff4ef;--purchase:#4254d6;--purchase2:#7b8cf5;--purchase-soft:#e8ebfd;--accent:var(--sales);--accent2:var(--sales2);--soft:var(--sales-soft);--bad:#c42b2b;--badsoft:#fde8e8;--warn:#a55d00;--warnsoft:#fff1d9;--ok:#13794a;--oksoft:#def5e8;--font:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;--num:"IBM Plex Mono","Cascadia Mono",Consolas,monospace;--ease:cubic-bezier(.2,.8,.2,1)}
+body[data-mode=purchase]{--accent:var(--purchase);--accent2:var(--purchase2);--soft:var(--purchase-soft)}
+body[data-mode=reminders]{--accent:#c2410c;--accent2:#f59e0b;--soft:#ffedd5}
+@media(prefers-color-scheme:dark){:root{--bg:#0e141b;--panel:#161f29;--ink:#e7edf3;--muted:#93a3b2;--line:#263341;--sales-soft:#10322d;--purchase-soft:#1c2250;--badsoft:#3a1c1c;--warnsoft:#3a2a10;--oksoft:#12301f;--warn:#f0b35a;--bad:#ff8a80;--ok:#4cc38a}body[data-mode=reminders]{--soft:#3a2310}}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.5;transition:background .4s}
+button,input,select{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+nav{background:linear-gradient(170deg,#0f1b27,#16283a 60%,#10202e);color:#d6e0e9;padding:24px 14px;position:sticky;top:0;height:100vh;overflow:auto}
+nav h1{font-size:18px;font-weight:700;margin:0 10px 22px;color:#fff;letter-spacing:.2px}
+nav .group{margin:14px 10px 6px;font-size:13px;color:#8aa0b3}
+nav button{position:relative;display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:9px 12px;margin-bottom:2px;color:#d6e0e9;cursor:pointer;transition:background .2s,transform .2s var(--ease)}
+nav button:hover{background:rgba(255,255,255,.08);transform:translateX(3px)}
+nav button[aria-current=page]{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;font-weight:600;box-shadow:0 6px 18px -6px var(--accent)}
+.badge{background:var(--bad);color:#fff;border-radius:99px;font-size:12px;font-weight:700;padding:0 8px;min-width:22px;text-align:center;animation:pulse 2s infinite}
+.badge[hidden]{display:none}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(196,43,43,.6)}50%{box-shadow:0 0 0 7px rgba(196,43,43,0)}}
+main{padding:30px 34px 70px;max-width:1160px;width:100%;animation:fade .4s var(--ease)}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+h2{font-size:26px;margin:0 0 4px;letter-spacing:-.3px}
+h2::after{content:"";display:block;width:46px;height:4px;border-radius:4px;margin-top:8px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.sub{color:var(--muted);margin:10px 0 22px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;box-shadow:0 10px 30px -18px rgba(15,30,45,.35)}
+.split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:22px;align-items:start}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.wide{grid-column:1/-1}
+label{display:block;font-size:14px;font-weight:500}
+label input,label select{display:block;width:100%;margin-top:5px;padding:10px 11px;background:var(--panel);border:1px solid var(--line);border-radius:8px;transition:border-color .2s,box-shadow .2s}
+label input:focus,label select:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 4px var(--soft)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* cash / credit toggle */
+.seg{position:relative;display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border-radius:10px;padding:4px;margin-top:5px}
+.seg::before{content:"";position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:7px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:transform .35s var(--ease);box-shadow:0 4px 12px -4px var(--accent)}
+.seg[data-v=credit]::before{transform:translateX(100%)}
+.seg input{position:absolute;opacity:0}
+.seg label{position:relative;text-align:center;padding:8px;cursor:pointer;border-radius:7px;transition:color .25s;color:var(--muted)}
+.seg input:checked+span{color:#fff;font-weight:600}
+.seg label:has(input:focus-visible){outline:2px solid var(--accent)}
+.seg span{position:relative;z-index:1;display:block;transition:color .25s}
+.collapse{display:grid;grid-template-rows:1fr;transition:grid-template-rows .4s var(--ease),opacity .3s}
+.collapse.shut{grid-template-rows:0fr;opacity:0}
+.collapse>div{overflow:hidden}
+.due{background:var(--soft);border-radius:12px;padding:16px;margin-top:2px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:3px 12px;font-size:13px;cursor:pointer;transition:all .2s}
+.chip:hover{transform:translateY(-2px)}.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.hint{font-size:13px;color:var(--muted);margin-top:8px}
+
+.drop{margin-top:18px;border:2px dashed var(--line);border-radius:12px;padding:20px;text-align:center;color:var(--muted);cursor:pointer;display:block;font-weight:400;transition:all .25s}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--soft);color:var(--ink);transform:scale(1.01)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.thumbs{list-style:none;padding:0;margin:12px 0 0;display:flex;flex-wrap:wrap;gap:10px}
+.thumbs li{position:relative;width:84px;animation:pop .35s var(--ease)}
+.thumbs .tile{width:84px;height:84px;border:1px solid var(--line);border-radius:10px;overflow:hidden;display:grid;place-items:center;background:var(--bg);font-weight:600;color:var(--muted)}
+.thumbs img{width:100%;height:100%;object-fit:cover}
+.thumbs .name{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thumbs .rm{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:0;background:var(--ink);color:var(--panel);cursor:pointer}
+@keyframes pop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+
+.actions{margin-top:22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;border:0;border-radius:10px;padding:12px 24px;font-weight:600;cursor:pointer;box-shadow:0 10px 20px -10px var(--accent);transition:transform .2s var(--ease),box-shadow .2s}
+.primary:hover{transform:translateY(-2px);box-shadow:0 14px 24px -10px var(--accent)}.primary:active{transform:scale(.97)}
+.primary:disabled{opacity:.55;cursor:progress;transform:none}
+.ghost{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;transition:border-color .2s}.ghost:hover{border-color:var(--accent)}
+.msg{font-size:14px}.msg.err{color:var(--bad)}.msg.ok{color:var(--ok)}
+
+.preview h3{font-size:15px;margin:0 0 12px}
+.preview table{width:100%;border-collapse:collapse;font-size:14px}
+.preview td{padding:7px 0;border-bottom:1px solid var(--line)}
+.n{text-align:right;font-family:var(--num);font-variant-numeric:tabular-nums}
+.preview .sum{margin-top:14px;display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:14px}
+.preview .total{font-weight:700;font-size:18px;padding-top:10px;border-top:2px solid var(--accent)}
+.pop{animation:bump .4s var(--ease)}@keyframes bump{40%{transform:scale(1.08);color:var(--accent)}}
+.tag{display:inline-block;font-size:12px;padding:1px 9px;border-radius:99px;background:var(--soft);color:var(--accent);font-weight:600}
+
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:16px}.filters label{min-width:150px}
+.tablewrap{overflow-x:auto}
+table.reg{width:100%;border-collapse:collapse;font-size:14px}
+table.reg th{text-align:left;font-weight:600;padding:10px;border-bottom:2px solid var(--accent);white-space:nowrap}
+table.reg th.n{text-align:right}
+table.reg td{padding:11px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.reg tbody tr{transition:background .2s;animation:fade .4s var(--ease) backwards}
+table.reg tbody tr:hover{background:var(--soft)}
+table.reg tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--line)}
+.linkbtn{background:none;border:0;color:var(--accent);cursor:pointer;padding:0;font-weight:600}.linkbtn:hover{text-decoration:underline}
+.empty{padding:34px 10px;color:var(--muted);text-align:center}
+.pill{display:inline-block;padding:2px 11px;border-radius:99px;font-size:13px;font-weight:600}
+.pill.ok{background:var(--oksoft);color:var(--ok)}.pill.bad{background:var(--badsoft);color:var(--bad)}.pill.warn{background:var(--warnsoft);color:var(--warn)}.pill.mute{background:var(--bg);color:var(--muted)}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:22px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;border-left:5px solid var(--accent2);animation:fade .5s var(--ease) backwards}
+.stat.bad{border-left-color:var(--bad)}.stat b{display:block;font-size:24px;font-family:var(--num);margin-top:2px}.stat.bad b{color:var(--bad)}
+h3.sec{font-size:17px;margin:26px 0 10px}
+
+dialog{border:0;border-radius:16px;padding:0;width:min(720px,94vw);background:var(--panel);color:var(--ink);box-shadow:0 30px 80px rgba(0,0,0,.35);animation:pop .3s var(--ease)}
+dialog::backdrop{background:rgba(8,16,26,.55);backdrop-filter:blur(3px)}
+.dlg{padding:24px}
+.dlg header{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:14px}
+.dlg h3{margin:0;font-size:19px}.dlg .meta{color:var(--muted);font-size:14px;margin:2px 0 0}
+.dlg table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:18px}
+.dlg th{text-align:left;padding:8px;border-bottom:2px solid var(--accent)}.dlg th.n{text-align:right}.dlg td{padding:8px;border-bottom:1px solid var(--line)}
+.bills{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.bills a{display:block;border:1px solid var(--line);border-radius:10px;overflow:hidden;text-decoration:none;color:var(--ink);transition:transform .25s var(--ease)}.bills a:hover{transform:translateY(-4px)}
+.bills img{display:block;width:100%;height:170px;object-fit:cover;background:var(--bg)}
+.bills .cap{padding:6px 8px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bills .pdf{height:170px;display:grid;place-items:center;font-weight:600;background:var(--bg)}
+
+#toast{position:fixed;right:24px;bottom:24px;background:var(--ink);color:var(--panel);padding:14px 20px;border-radius:12px;box-shadow:0 16px 40px -10px rgba(0,0,0,.5);transform:translateY(30px);opacity:0;pointer-events:none;transition:all .45s var(--ease);max-width:340px;z-index:9}
+#toast.show{transform:none;opacity:1}#toast.err{background:var(--bad);color:#fff}
+@media(max-width:860px){.app{grid-template-columns:1fr}nav{position:static;height:auto;display:flex;flex-wrap:wrap;gap:4px;padding:12px}nav h1,nav .group{display:none}nav button{width:auto}main{padding:20px 14px 50px}.split,.grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*,*::before{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body data-mode="sales">
+<div class="app">
+  <nav aria-label="Sections">
+    <h1>Accounts</h1>
+    <div class="group">Sales</div>
+    <button data-view="sales-new">New sales entry</button>
+    <button data-view="sales-list">Sales register</button>
+    <div class="group">Purchase</div>
+    <button data-view="purchase-new">New purchase entry</button>
+    <button data-view="purchase-list">Purchase register</button>
+    <div class="group">Follow up</div>
+    <button data-view="reminders-list">Reminders <span class="badge" id="badge" hidden></span></button>
+  </nav>
+  <main id="main"></main>
+</div>
+<dialog id="detail"><div class="dlg" id="detailBody"></div></dialog>
+<div id="toast" role="status"></div>
+
+<script>
+const API = "http://127.0.0.1:8000"; // change if your API runs elsewhere
+const $ = (s, r = document) => r.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const inr = n => new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR"}).format(Number(n||0));
+const day = d => d ? new Date(d+"T00:00").toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "";
+const ymd = d => { const x = new Date(d); x.setMinutes(x.getMinutes()-x.getTimezoneOffset()); return x.toISOString().slice(0,10); };
+const today = () => ymd(new Date());
+const addDays = (s, n) => { const d = new Date(s+"T00:00"); d.setDate(d.getDate()+n); return ymd(d); };
+const diffDays = (a, b) => Math.round((new Date(b+"T00:00") - new Date(a+"T00:00")) / 864e5);
+
+const L = {
+  sales:{party:"Customer",partyType:"customer",partyField:"customer_id",endpoint:"/sales-entries",invoice:"Invoice no.",title:"New sales entry",save:"Save sales entry",verb:"collect"},
+  purchase:{party:"Supplier",partyType:"supplier",partyField:"supplier_id",endpoint:"/purchase-entries",invoice:"Supplier bill no.",title:"New purchase entry",save:"Save purchase entry",verb:"pay"}
+};
+
+async function api(path, opts) {
+  let r;
+  try { r = await fetch(API+path, opts); } catch { throw new Error("Can’t reach the server at "+API+". Check that uvicorn is running."); }
+  let data = null; try { data = await r.json(); } catch {}
+  if (!r.ok) { const d = data && data.detail; throw new Error(Array.isArray(d) ? d.map(x => (x.loc ? x.loc.slice(1).join(".")+": " : "")+x.msg).join("; ") : (d || r.statusText)); }
+  return data;
+}
+let toastT;
+function toast(text, err) { const t = $("#toast"); t.textContent = text; t.className = "show"+(err ? " err" : ""); clearTimeout(toastT); toastT = setTimeout(() => t.className = "", 3800); }
+
+/* due-date status shown in registers and reminders */
+function status(t) {
+  if (!t) return `<span class="pill mute">No record</span>`;
+  if (t.payment_mode === "cash") return `<span class="pill ok">Cash, settled</span>`;
+  if (t.is_paid) return `<span class="pill ok">Paid</span>`;
+  const d = diffDays(today(), t.due_date);
+  if (d < 0) return `<span class="pill bad">Overdue ${-d} day${d === -1 ? "" : "s"}</span>`;
+  if (d === 0) return `<span class="pill warn">Due today</span>`;
+  if (d <= 7) return `<span class="pill warn">Due in ${d} days</span>`;
+  return `<span class="pill mute">Due ${day(t.due_date)}</span>`;
+}
+async function refreshBadge() {
+  try { const r = await api("/reminders?days=7"), n = r.summary.overdue_count; $("#badge").textContent = n; $("#badge").hidden = !n; document.title = (n ? `(${n}) ` : "")+"Accounts: sales and purchase"; } catch {}
+}
+
+/* navigation */
+function setView(view) {
+  const [kind, page] = view.split("-");
+  document.body.dataset.mode = kind;
+  document.querySelectorAll("nav button").forEach(b => b.dataset.view === view ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  location.hash = view;
+  const m = $("#main"); const c = m.cloneNode(false); m.replaceWith(c); // restarts the fade-in
+  if (kind === "reminders") renderReminders(); else if (page === "new") renderForm(kind); else renderList(kind);
+  refreshBadge();
+}
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+
+/* entry form */
+async function renderForm(kind) {
+  const C = L[kind]; let files = [], lastTotal = "";
+  $("#main").innerHTML = `
+    <h2>${C.title}</h2>
+    <p class="sub">Fill in the bill and choose how it is paid. The debit and credit lines are created for you.</p>
+    <div class="split">
+      <form class="panel" id="entryForm" novalidate>
+        <div class="grid">
+          <label>Date<input type="date" name="entry_date" required value="${today()}"></label>
+          <label>${C.party}<select name="party" required><option value="">Loading...</option></select></label>
+          <label>${C.invoice}<input name="invoice_no" autocomplete="off"></label>
+          <label>Taxable amount (₹)<input type="number" name="taxable_amount" step="0.01" min="0.01" inputmode="decimal" required></label>
+          <label>GST rate<select name="gst_rate"><option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option value="18" selected>18%</option><option value="28">28%</option></select></label>
+          <label>Narration<input name="narration" placeholder="Optional" autocomplete="off"></label>
+          <div class="wide">
+            <div style="font-size:14px;font-weight:500">Payment</div>
+            <div class="seg" id="seg" data-v="credit">
+              <label><input type="radio" name="payment_mode" value="cash"><span>Cash (paid now)</span></label>
+              <label><input type="radio" name="payment_mode" value="credit" checked><span>Credit (pay later)</span></label>
+            </div>
+          </div>
+          <div class="wide collapse" id="dueWrap"><div>
+            <div class="due">
+              <div class="grid">
+                <label>Credit days<input type="number" name="credit_days" min="0" max="365" value="30"></label>
+                <label>Due date<input type="date" name="due_date" value="${addDays(today(),30)}"></label>
+              </div>
+              <div class="chips" id="chips">${[0,7,15,30,45,60].map(n => `<button type="button" class="chip" data-d="${n}">${n ? n+" days" : "Same day"}</button>`).join("")}</div>
+              <div class="hint" id="dueHint"></div>
+            </div>
+          </div></div>
+        </div>
+        <label class="drop" id="drop"><input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,application/pdf" multiple><strong>Add bill images or PDF</strong><br>Drop files here or click to choose</label>
+        <ul class="thumbs" id="thumbs"></ul>
+        <div class="actions"><button class="primary" id="saveBtn">${C.save}</button><span class="msg" id="msg" role="status"></span></div>
+      </form>
+      <aside class="panel preview" id="preview"></aside>
+    </div>`;
+  const form = $("#entryForm");
+  const showMsg = (t, e) => { const m = $("#msg"); m.textContent = t; m.className = "msg "+(e ? "err" : "ok"); };
+  const mode = () => form.payment_mode.value;
+
+  try {
+    const parties = await api("/accounts?party_type="+C.partyType);
+    form.party.innerHTML = parties.length ? `<option value="">Select ${C.party.toLowerCase()}</option>`+parties.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("") : `<option value="">No ${C.party.toLowerCase()} accounts yet</option>`;
+  } catch (e) { form.party.innerHTML = `<option value="">Could not load</option>`; showMsg(e.message, true); }
+
+  /* payment mode + due date sync */
+  function syncDue(from) {
+    const base = form.entry_date.value || today();
+    if (from === "days") form.due_date.value = addDays(base, parseInt(form.credit_days.value) || 0);
+    if (from === "date") form.credit_days.value = Math.max(0, diffDays(base, form.due_date.value));
+    const days = diffDays(base, form.due_date.value);
+    $("#dueHint").textContent = days < 0 ? "Due date is before the entry date." : `${C.verb === "pay" ? "You pay" : "You collect"} on ${day(form.due_date.value)}, ${days} day${days === 1 ? "" : "s"} after the entry date.`;
+    document.querySelectorAll("#chips .chip").forEach(c => c.classList.toggle("on", +c.dataset.d === (parseInt(form.credit_days.value) || 0)));
+  }
+  function syncMode() { $("#seg").dataset.v = mode(); $("#dueWrap").classList.toggle("shut", mode() === "cash"); drawPreview(); }
+  document.querySelectorAll("#chips .chip").forEach(c => c.onclick = () => { form.credit_days.value = c.dataset.d; syncDue("days"); drawPreview(); });
+  form.credit_days.addEventListener("input", () => syncDue("days"));
+  form.due_date.addEventListener("input", () => syncDue("date"));
+  form.entry_date.addEventListener("input", () => syncDue("days"));
+  form.querySelectorAll("[name=payment_mode]").forEach(r => r.addEventListener("change", syncMode));
+
+  /* live journal preview */
+  function drawPreview() {
+    const taxable = parseFloat(form.taxable_amount.value) || 0, rate = parseFloat(form.gst_rate.value) || 0;
+    const gst = Math.round(taxable*rate)/100, total = taxable+gst;
+    const party = form.party.value ? form.party.selectedOptions[0].text : C.party;
+    let rows = kind === "sales" ? [[party,total,0],["Sales",0,taxable],["GST Payable",0,gst]] : [["Purchases",taxable,0],["GST Input",gst,0],[party,0,total]];
+    if (mode() === "cash") rows = rows.concat(kind === "sales" ? [["Cash",total,0],[party,0,total]] : [[party,total,0],["Cash",0,total]]);
+    $("#preview").innerHTML = `
+      <h3>Journal that will be posted <span class="tag">${mode() === "cash" ? "Cash" : "Credit"}</span></h3>
+      <table><tr><td></td><td class="n">Debit</td><td class="n">Credit</td></tr>
+      ${rows.filter(r => r[1] > 0 || r[2] > 0 || taxable === 0).map(r => `<tr><td>${esc(r[0])}</td><td class="n">${r[1] ? inr(r[1]) : ""}</td><td class="n">${r[2] ? inr(r[2]) : ""}</td></tr>`).join("")}</table>
+      <div class="sum"><span>Taxable amount</span><span class="n">${inr(taxable)}</span><span>GST (${rate}%)</span><span class="n">${inr(gst)}</span>
+      <span class="total">Bill total</span><span class="n total" id="tot">${inr(total)}</span>
+      ${mode() === "credit" ? `<span>Due on</span><span class="n">${day(form.due_date.value)}</span>` : ""}</div>`;
+    if (inr(total) !== lastTotal) { $("#tot").classList.add("pop"); lastTotal = inr(total); }
+  }
+  form.addEventListener("input", drawPreview);
+  syncDue(); syncMode();
+
+  /* files */
+  const input = $("#fileInput"), drop = $("#drop"), OK = ["image/jpeg","image/png","image/webp","application/pdf"];
+  function addFiles(list) { const bad = []; for (const f of list) OK.includes(f.type) ? files.push(f) : bad.push(f.name); if (bad.length) showMsg("Only JPG, PNG, WEBP or PDF files: skipped "+bad.join(", "), true); drawThumbs(); }
+  function drawThumbs() {
+    $("#thumbs").innerHTML = "";
+    files.forEach((f, i) => { const li = document.createElement("li");
+      li.innerHTML = `${f.type === "application/pdf" ? `<div class="tile">PDF</div>` : `<div class="tile"><img alt="" src="${URL.createObjectURL(f)}"></div>`}<div class="name" title="${esc(f.name)}">${esc(f.name)}</div><button type="button" class="rm" aria-label="Remove ${esc(f.name)}">×</button>`;
+      li.querySelector(".rm").onclick = () => { files.splice(i,1); drawThumbs(); }; $("#thumbs").appendChild(li); });
+  }
+  input.addEventListener("change", () => { addFiles([...input.files]); input.value = ""; });
+  ["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => addFiles([...e.dataTransfer.files]));
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault(); showMsg("", false);
+    if (!form.reportValidity()) return;
+    if (mode() === "credit" && diffDays(form.entry_date.value, form.due_date.value) < 0) { showMsg("Due date can’t be before the entry date.", true); return; }
+    const fd = new FormData();
+    fd.append("entry_date", form.entry_date.value); fd.append(C.partyField, form.party.value);
+    fd.append("taxable_amount", form.taxable_amount.value); fd.append("gst_rate", form.gst_rate.value);
+    fd.append("payment_mode", mode());
+    if (mode() === "credit") { fd.append("credit_days", form.credit_days.value || 0); fd.append("due_date", form.due_date.value); }
+    if (form.invoice_no.value.trim()) fd.append("invoice_no", form.invoice_no.value.trim());
+    if (form.narration.value.trim()) fd.append("narration", form.narration.value.trim());
+    files.forEach(f => fd.append("files", f, f.name));
+    const btn = $("#saveBtn"); btn.disabled = true;
+    try {
+      const r = await api(C.endpoint, {method:"POST", body:fd});
+      toast(`Saved entry #${r.journal_entry_id}, total ${inr(r.total_amount)}${mode() === "credit" ? `, due ${day(form.due_date.value)}` : " (cash)"}.`);
+      form.taxable_amount.value = ""; form.invoice_no.value = ""; form.narration.value = ""; files = []; drawThumbs(); drawPreview(); refreshBadge();
+    } catch (err) { showMsg(err.message, true); toast(err.message, true); }
+    finally { btn.disabled = false; }
+  });
+}
+
+/* registers */
+async function renderList(kind) {
+  const C = L[kind];
+  $("#main").innerHTML = `
+    <h2>${kind === "sales" ? "Sales" : "Purchase"} register</h2>
+    <p class="sub">Every ${kind} entry with GST, cash or credit status and attached bills.</p>
+    <div class="panel">
+      <div class="filters">
+        <label>${C.party}<select id="fParty"><option value="">All</option></select></label>
+        <label>From<input type="date" id="fFrom"></label><label>To<input type="date" id="fTo"></label>
+        <label>Payment<select id="fMode"><option value="">All</option><option value="cash">Cash</option><option value="credit">Credit</option><option value="overdue">Overdue only</option></select></label>
+        <button class="ghost" id="fApply">Apply filters</button>
+      </div>
+      <div class="tablewrap" id="tbl"><div class="empty">Loading...</div></div>
+    </div>`;
+  try { const ps = await api("/accounts?party_type="+C.partyType); $("#fParty").innerHTML = `<option value="">All</option>`+ps.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join(""); } catch {}
+  async function load() {
+    const q = new URLSearchParams();
+    if ($("#fParty").value) q.set(C.partyField, $("#fParty").value);
+    if ($("#fFrom").value) q.set("date_from", $("#fFrom").value);
+    if ($("#fTo").value) q.set("date_to", $("#fTo").value);
+    try {
+      const [all, terms] = await Promise.all([api(C.endpoint+(q.toString() ? "?"+q : "")), api("/reminders/terms?entry_type="+kind).catch(() => [])]);
+      const tm = Object.fromEntries(terms.map(t => [t.entry_id, t])), f = $("#fMode").value;
+      const rows = all.filter(r => { const t = tm[r.id]; if (!f) return true; if (f === "overdue") return t && t.payment_mode === "credit" && !t.is_paid && diffDays(today(), t.due_date) < 0; return t && t.payment_mode === f; });
+      if (!rows.length) { $("#tbl").innerHTML = `<div class="empty">No ${kind} entries found. Add one from “${C.title}”.</div>`; return; }
+      const sum = k => rows.reduce((a, r) => a + Number(r[k]||0), 0);
+      $("#tbl").innerHTML = `<table class="reg"><thead><tr><th>Date</th><th>${C.invoice}</th><th>${C.party}</th><th class="n">Taxable</th><th class="n">GST</th><th class="n">Total</th><th>Payment</th><th>Bills</th><th></th></tr></thead>
+        <tbody>${rows.map((r,i) => `<tr style="animation-delay:${Math.min(i,12)*30}ms"><td>${day(r.date)}</td><td>${esc(r.invoice_no||"-")}</td><td>${esc(r.party_name||"-")}</td>
+          <td class="n">${inr(r.taxable_amount)}</td><td class="n">${inr(r.gst_amount)}</td><td class="n">${inr(r.total_amount)}</td><td>${status(tm[r.id])}</td><td>${r.attachment_count||0}</td>
+          <td><button class="linkbtn" data-id="${r.id}">View</button></td></tr>`).join("")}</tbody>
+        <tfoot><tr><td colspan="3">${rows.length} entries</td><td class="n">${inr(sum("taxable_amount"))}</td><td class="n">${inr(sum("gst_amount"))}</td><td class="n">${inr(sum("total_amount"))}</td><td colspan="3"></td></tr></tfoot></table>`;
+      $("#tbl").querySelectorAll(".linkbtn").forEach(b => b.onclick = () => openDetail(b.dataset.id));
+    } catch (e) { $("#tbl").innerHTML = `<div class="empty msg err">${esc(e.message)}</div>`; }
+  }
+  $("#fApply").onclick = load; load();
+}
+
+/* reminders */
+async function renderReminders() {
+  $("#main").innerHTML = `<h2>Reminders</h2><p class="sub">Unpaid credit entries that are overdue or due soon.</p>
+    <div class="filters"><label>Show due within<select id="rDays"><option value="3">3 days</option><option value="7" selected>7 days</option><option value="15">15 days</option><option value="30">30 days</option></select></label></div>
+    <div id="rBody"><div class="empty">Loading...</div></div>`;
+  async function load() {
+    try {
+      const d = await api("/reminders?days="+$("#rDays").value), s = d.summary;
+      const tbl = (list, who, act) => list.length ? `<div class="panel tablewrap"><table class="reg"><thead><tr><th>${who}</th><th>Bill</th><th>Due date</th><th>Status</th><th class="n">Amount</th><th></th></tr></thead><tbody>${list.map(i => `<tr><td>${esc(i.party_name)}</td><td>${esc(i.invoice_no||"-")}</td><td>${day(i.due_date)}</td><td>${status({payment_mode:"credit",is_paid:false,due_date:i.due_date})}</td><td class="n">${inr(i.amount)}</td><td><button class="linkbtn" data-id="${i.id}">${act}</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="panel empty">Nothing here right now.</div>`;
+      $("#rBody").innerHTML = `<div class="stats">${[["To collect",s.to_collect,0],["Overdue to collect",s.to_collect_overdue,1],["To pay",s.to_pay,0],["Overdue to pay",s.to_pay_overdue,1]].map(([l,v,b],i) => `<div class="stat ${b && v > 0 ? "bad" : ""}" style="animation-delay:${i*70}ms"><span>${l}</span><b>${inr(v)}</b></div>`).join("")}</div>
+        <h3 class="sec">To collect from customers</h3>${tbl(d.receivables,"Customer","Mark received")}
+        <h3 class="sec">To pay to suppliers</h3>${tbl(d.payables,"Supplier","Mark paid")}`;
+      $("#rBody").querySelectorAll(".linkbtn").forEach(b => b.onclick = async () => {
+        if (!confirm("Mark this as settled and remove the reminder?")) return;
+        try { await api(`/reminders/${b.dataset.id}/paid`, {method:"PATCH"}); toast("Reminder cleared."); load(); refreshBadge(); } catch (e) { toast(e.message, true); }
+      });
+    } catch (e) { $("#rBody").innerHTML = `<div class="empty msg err">${esc(e.message)}</div>`; }
+  }
+  $("#rDays").onchange = load; load();
+}
+
+/* entry detail */
+async function openDetail(id) {
+  const dlg = $("#detail"), body = $("#detailBody"); body.innerHTML = `<div class="empty">Loading...</div>`; dlg.showModal();
+  try {
+    const e = await api("/journal-entries/"+id);
+    body.innerHTML = `<header><div><h3>${esc(e.party_name||"Entry")} ${e.invoice_no ? "· "+esc(e.invoice_no) : ""}</h3><p class="meta">Entry #${e.id}, ${day(e.date)}${e.narration ? ", "+esc(e.narration) : ""}</p></div><button class="ghost" id="closeDlg">Close</button></header>
+      <table><thead><tr><th>Account</th><th class="n">Debit</th><th class="n">Credit</th></tr></thead><tbody>${e.lines.map(l => `<tr><td>${esc(l.account_name)}</td><td class="n">${Number(l.debit) ? inr(l.debit) : ""}</td><td class="n">${Number(l.credit) ? inr(l.credit) : ""}</td></tr>`).join("")}</tbody></table>
+      <h3 style="font-size:15px;margin:0 0 10px">Bills</h3>
+      ${e.attachments.length ? `<div class="bills">${e.attachments.map(a => a.content_type === "application/pdf" ? `<a href="${API}${a.url}" target="_blank" rel="noopener"><div class="pdf">PDF</div><div class="cap">${esc(a.original_name)}</div></a>` : `<a href="${API}${a.url}" target="_blank" rel="noopener"><img alt="${esc(a.original_name)}" src="${API}${a.url}"><div class="cap">${esc(a.original_name)}</div></a>`).join("")}</div>` : `<p class="meta">No bills attached.</p>`}`;
+    $("#closeDlg").onclick = () => dlg.close();
+  } catch (err) { body.innerHTML = `<p class="msg err">${esc(err.message)}</p><button class="ghost" id="closeDlg">Close</button>`; $("#closeDlg").onclick = () => dlg.close(); }
+}
+$("#detail").addEventListener("click", e => { if (e.target.id === "detail") e.target.close(); });
+
+const views = ["sales-new","sales-list","purchase-new","purchase-list","reminders-list"];
+setView(views.includes(location.hash.slice(1)) ? location.hash.slice(1) : "sales-new");
+</script>
+</body>
+</html>

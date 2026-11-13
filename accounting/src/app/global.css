@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/* Fonts come from layout.js (next/font). `static` makes Tailwind always output these variables. */
+@theme static {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), Georgia, serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+body { background: #F6F3EA; color: #132622; -webkit-font-smoothing: antialiased; }
+::selection { background: #B9852F; color: #fff; }
+
+/* ---- Reveal: scroll-in animation. Variants are set with data-v ---- */
+.reveal { opacity: 0; filter: blur(4px); transition: opacity .9s cubic-bezier(.2,.8,.2,1), transform .9s cubic-bezier(.2,.8,.2,1), filter .9s cubic-bezier(.2,.8,.2,1); will-change: opacity, transform; }
+.reveal[data-v="up"] { transform: translateY(30px); }
+.reveal[data-v="left"] { transform: translateX(-36px); }
+.reveal[data-v="right"] { transform: translateX(36px); }
+.reveal[data-v="scale"] { transform: scale(.94); }
+.reveal.visible { opacity: 1; transform: none; filter: none; }
+
+.faq-chevron { display: inline-block; transition: transform .4s cubic-bezier(.2,.8,.2,1); }
+
+/* hero card floats gently */
+.float-slow { animation: float 7s ease-in-out infinite; }
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+/* underline that draws in on hover */
+.draw-link { background: linear-gradient(#B9852F, #B9852F) 0 100% / 100% 2px no-repeat; transition: background-size .35s cubic-bezier(.2,.8,.2,1); }
+.draw-link:hover { background-size: 100% 100%; color: #F6F3EA; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; filter: none; transition: none; }
+  .float-slow { animation: none; }
+}

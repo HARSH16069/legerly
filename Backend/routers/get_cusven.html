@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vendors and Customers</title>
+<style>
+:root{--bg:#f3f5f8;--card:#fff;--ink:#1c2433;--mute:#667085;--line:#d9dee7;--accent:#1f5fbf;--accent-ink:#fff;--bad:#c0362c;--ok:#1b7f4b;--hover:#eef3fb}
+@media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#171c27;--ink:#e6e9f0;--mute:#98a2b3;--line:#2b3343;--accent:#5b9bff;--accent-ink:#0b1220;--bad:#ff7b70;--ok:#4cc38a;--hover:#1e2535}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:24px 16px 100px}
+h1{font-size:26px;margin:0}
+.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.top .grow{flex:1}
+.switch{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.switch button{border:0;background:var(--card);color:var(--ink);padding:9px 20px;font:inherit;cursor:pointer}
+.switch button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+.api{display:flex;gap:8px;align-items:center;color:var(--mute);font-size:13px;margin-bottom:16px}
+.api input{max-width:280px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px}
+input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font:inherit}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:6px;padding:10px 20px;font:inherit;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.6;cursor:wait}
+.ghost{background:none;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:10px 18px;font:inherit;cursor:pointer}
+.danger{background:none;border:1px solid var(--bad);color:var(--bad);border-radius:6px;padding:10px 18px;font:inherit;cursor:pointer}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{color:var(--mute);font-weight:600;font-size:13px}
+tbody tr{cursor:pointer}tbody tr:hover{background:var(--hover)}
+.scroll{overflow-x:auto}
+.empty{padding:28px;text-align:center;color:var(--mute)}
+.row{display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:center;margin-bottom:14px}
+.row>label.req{color:var(--bad)}
+.inline{display:flex;gap:10px;flex-wrap:wrap}.inline>*{flex:1 1 140px;min-width:0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:22px 0 18px;overflow-x:auto}
+.tabs button{border:0;background:none;color:var(--mute);padding:10px 14px;font:inherit;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+.tabs button[aria-selected=true]{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+.panel[hidden],.view[hidden]{display:none}
+.check{display:flex;gap:8px;align-items:center}.check input{width:auto}
+fieldset{border:1px solid var(--line);border-radius:8px;margin:0 0 16px;padding:14px}
+legend{padding:0 6px;font-weight:600}
+.list-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}.list-row>*{flex:1 1 130px;min-width:0}
+.list-row .x{flex:0 0 auto;border:1px solid var(--line);background:none;color:var(--bad);border-radius:6px;padding:0 12px;cursor:pointer}
+.add{border:1px dashed var(--accent);background:none;color:var(--accent);border-radius:6px;padding:8px 14px;cursor:pointer;font:inherit}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px}
+.bar .in{max-width:980px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#msg{margin-left:auto;font-size:14px}#msg.ok{color:var(--ok)}#msg.err{color:var(--bad)}
+@media (max-width:640px){.row{grid-template-columns:1fr;gap:4px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1 id="title">Vendors</h1>
+    <div class="grow"></div>
+    <div class="switch" role="group" aria-label="Contact type">
+      <button type="button" id="bVendor" aria-pressed="true">Vendors (purchase)</button>
+      <button type="button" id="bCustomer" aria-pressed="false">Customers (sale)</button>
+    </div>
+  </div>
+  <div class="api"><label for="api">API address</label><input id="api" value="http://127.0.0.1:8000"></div>
+
+  <!-- LIST VIEW -->
+  <section class="view" id="listView">
+    <div class="top">
+      <input id="search" placeholder="Search by name, email, phone or PAN" style="max-width:360px">
+      <div class="grow"></div>
+      <button class="btn" id="newBtn" type="button">New</button>
+    </div>
+    <div class="card scroll" style="padding:0">
+      <table>
+        <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th><th>PAN</th><th>Account ID</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" hidden></div>
+    </div>
+  </section>
+
+  <!-- FORM VIEW -->
+  <section class="view" id="formView" hidden>
+    <form class="card" id="f" autocomplete="off">
+      <div class="row"><label>Primary contact</label>
+        <div class="inline">
+          <select id="salutation"><option value="">Salutation</option><option>Mr.</option><option>Mrs.</option><option>Ms.</option><option>Dr.</option></select>
+          <input id="first_name" placeholder="First name"><input id="last_name" placeholder="Last name">
+        </div></div>
+      <div class="row"><label for="company_name">Company name</label><input id="company_name"></div>
+      <div class="row"><label class="req" for="display_name">Display name*</label><input id="display_name" required></div>
+      <div class="row"><label for="email">Email address</label><input id="email" type="email"></div>
+      <div class="row"><label>Phone</label><div class="inline"><input id="work_phone" placeholder="Work phone"><input id="mobile" placeholder="Mobile"></div></div>
+      <div class="row"><label for="language">Language</label>
+        <select id="language"><option>English</option><option>Hindi</option><option>Gujarati</option></select></div>
+
+      <div class="tabs" role="tablist" id="tabs"></div>
+
+      <div class="panel" data-tab="Other Details">
+        <div class="row"><label for="gstin">GSTIN</label><input id="gstin" maxlength="15"></div>
+        <div class="row"><label for="pan">PAN</label><input id="pan" maxlength="10"></div>
+        <div class="row"><label>MSME registered?</label><label class="check"><input type="checkbox" id="msme"> This contact is MSME registered</label></div>
+        <div class="row"><label for="currency">Currency</label>
+          <select id="currency"><option value="INR">INR - Indian Rupee</option><option value="USD">USD - US Dollar</option><option value="EUR">EUR - Euro</option></select></div>
+      </div>
+      <div class="panel" data-tab="Address" hidden>
+        <fieldset data-addr="billing"><legend>Billing address</legend></fieldset>
+        <fieldset data-addr="shipping"><legend>Shipping address</legend></fieldset>
+        <button type="button" class="add" id="copyAddr">Copy billing to shipping</button>
+      </div>
+      <div class="panel" data-tab="Contact Persons" hidden><div id="persons"></div><button type="button" class="add" data-add="persons">Add contact person</button></div>
+      <div class="panel" data-tab="Bank Details" hidden><div id="banks"></div><button type="button" class="add" data-add="banks">Add bank account</button></div>
+      <div class="panel" data-tab="Custom Fields" hidden><div id="custom"></div><button type="button" class="add" data-add="custom">Add custom field</button></div>
+      <div class="panel" data-tab="Reporting Tags" hidden><div id="tags"></div><button type="button" class="add" data-add="tags">Add reporting tag</button></div>
+      <div class="panel" data-tab="Remarks" hidden><textarea id="remarks" rows="5" placeholder="Notes for internal use"></textarea></div>
+    </form>
+  </section>
+</div>
+
+<div class="bar"><div class="in">
+  <span id="formBtns" hidden style="display:none;gap:10px">
+    <button class="btn" id="save" type="button">Save</button>
+    <button class="ghost" id="cancel" type="button">Back to list</button>
+    <button class="danger" id="del" type="button" hidden>Deactivate</button>
+  </span>
+  <span id="msg" role="status"></span>
+</div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let kind = "vendors", editId = null, cache = [];
+const base = () => $("api").value.replace(/\/$/, "") + "/" + kind;
+const say = (t, c) => { $("msg").textContent = t; $("msg").className = c || ""; };
+
+// ---------- views ----------
+function show(view){
+  $("listView").hidden = view !== "list";
+  $("formView").hidden = view !== "form";
+  $("formBtns").style.display = view === "form" ? "flex" : "none";
+}
+function setKind(k){
+  kind = k;
+  $("bVendor").setAttribute("aria-pressed", k === "vendors");
+  $("bCustomer").setAttribute("aria-pressed", k === "customers");
+  $("title").textContent = k === "vendors" ? "Vendors" : "Customers";
+  show("list"); load();
+}
+$("bVendor").onclick = () => setKind("vendors");
+$("bCustomer").onclick = () => setKind("customers");
+
+// ---------- list ----------
+async function load(){
+  say("Loading…");
+  try{
+    const r = await fetch(base());
+    if(!r.ok) throw new Error("Could not load list");
+    cache = await r.json(); say(""); render();
+  }catch(e){ cache = []; render(); say(e.message + ". Check the API address and that the server is running.", "err"); }
+}
+function render(){
+  const q = $("search").value.trim().toLowerCase();
+  const list = cache.filter(p => [p.display_name, p.company_name, p.email, p.mobile, p.work_phone, p.pan].some(v => (v || "").toLowerCase().includes(q)));
+  const tb = $("rows"); tb.innerHTML = "";
+  list.forEach(p => {
+    const tr = document.createElement("tr");
+    [p.display_name, p.company_name, p.email, p.mobile || p.work_phone, p.pan, p.account_id].forEach(v => {
+      const td = document.createElement("td"); td.textContent = v ?? ""; tr.appendChild(td);
+    });
+    tr.onclick = () => openForm(p);
+    tb.appendChild(tr);
+  });
+  $("empty").hidden = list.length > 0;
+  $("empty").textContent = cache.length ? "No match for your search." : "Nothing here yet. Select New to add one.";
+}
+$("search").oninput = render;
+$("newBtn").onclick = () => openForm(null);
+
+// ---------- tabs ----------
+const panels = [...document.querySelectorAll(".panel")];
+function pickTab(i){
+  panels.forEach((p, j) => p.hidden = i !== j);
+  [...$("tabs").children].forEach((b, j) => b.setAttribute("aria-selected", i === j));
+}
+panels.forEach((p, i) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.role = "tab"; b.textContent = p.dataset.tab; b.onclick = () => pickTab(i);
+  $("tabs").appendChild(b);
+});
+
+// ---------- dynamic fields ----------
+const addrFields = [["attention","Attention"],["street1","Street 1"],["street2","Street 2"],["city","City"],["state","State"],["pin_code","PIN code"],["phone","Phone"]];
+document.querySelectorAll("[data-addr]").forEach(fs => addrFields.forEach(([k, l]) => {
+  const r = document.createElement("div"); r.className = "row";
+  r.innerHTML = `<label>${l}</label><input data-k="${k}">`; fs.appendChild(r);
+}));
+$("copyAddr").onclick = () => {
+  const b = document.querySelector("[data-addr=billing]"), s = document.querySelector("[data-addr=shipping]");
+  b.querySelectorAll("input").forEach(i => s.querySelector(`[data-k=${i.dataset.k}]`).value = i.value);
+};
+const kinds = {
+  persons:[["salutation","Salutation"],["first_name","First name"],["last_name","Last name"],["email","Email"],["work_phone","Work phone"],["mobile","Mobile"]],
+  banks:[["account_holder_name","Account holder"],["bank_name","Bank name"],["account_number","Account number"],["ifsc","IFSC"]],
+  custom:[["key","Field name"],["value","Value"]],
+  tags:[["key","Tag name"],["value","Value"]]
+};
+function addRow(name, vals = {}){
+  const row = document.createElement("div"); row.className = "list-row";
+  kinds[name].forEach(([k, ph]) => {
+    const i = document.createElement("input"); i.dataset.k = k; i.placeholder = ph; i.value = vals[k] ?? ""; row.appendChild(i);
+  });
+  const x = document.createElement("button"); x.type = "button"; x.className = "x"; x.textContent = "Remove"; x.onclick = () => row.remove();
+  row.appendChild(x); $(name).appendChild(row);
+}
+document.querySelectorAll("[data-add]").forEach(b => b.onclick = () => addRow(b.dataset.add));
+const rows = n => [...$(n).children].map(r => Object.fromEntries([...r.querySelectorAll("input")].map(i => [i.dataset.k, i.value.trim() || null])));
+const anyVal = o => Object.values(o).some(v => v);
+const pairs = n => Object.fromEntries(rows(n).filter(r => r.key).map(r => [r.key, r.value || ""]));
+
+// ---------- open form (new or edit) ----------
+const simple = ["salutation","first_name","last_name","company_name","display_name","email","work_phone","mobile","gstin","pan","remarks"];
+function openForm(p){
+  editId = p ? p.id : null;
+  $("f").reset();
+  ["persons","banks","custom","tags"].forEach(n => $(n).innerHTML = "");
+  document.querySelectorAll("[data-addr] input").forEach(i => i.value = "");
+  if(p){
+    simple.forEach(k => $(k).value = p[k] ?? "");
+    $("language").value = p.language || "English";
+    $("currency").value = p.currency || "INR";
+    $("msme").checked = !!p.msme_registered;
+    (p.addresses || []).forEach(a => {
+      const fs = document.querySelector(`[data-addr=${a.address_type}]`);
+      if(fs) addrFields.forEach(([k]) => fs.querySelector(`[data-k=${k}]`).value = a[k] ?? "");
+    });
+    (p.contact_persons || []).forEach(c => addRow("persons", c));
+    (p.bank_details || []).forEach(b => addRow("banks", b));
+    Object.entries(p.custom_fields || {}).forEach(([key, value]) => addRow("custom", {key, value}));
+    Object.entries(p.reporting_tags || {}).forEach(([key, value]) => addRow("tags", {key, value}));
+  }
+  $("del").hidden = !p;
+  $("save").textContent = p ? "Save changes" : "Save";
+  $("title").textContent = (p ? "Edit " : "New ") + (kind === "vendors" ? "vendor" : "customer");
+  pickTab(0); show("form"); say(""); window.scrollTo(0, 0);
+}
+function backToList(){ $("title").textContent = kind === "vendors" ? "Vendors" : "Customers"; show("list"); }
+$("cancel").onclick = () => { backToList(); say(""); };
+
+// ---------- save / deactivate ----------
+function body(){
+  const v = id => $(id).value.trim() || null;
+  const addresses = [...document.querySelectorAll("[data-addr]")].map(fs => {
+    const a = {address_type: fs.dataset.addr, country: "India"};
+    fs.querySelectorAll("input").forEach(i => a[i.dataset.k] = i.value.trim() || null);
+    return a;
+  }).filter(a => addrFields.some(([k]) => a[k]));
+  return {
+    salutation: v("salutation"), first_name: v("first_name"), last_name: v("last_name"),
+    company_name: v("company_name"), display_name: $("display_name").value.trim(),
+    email: v("email"), work_phone: v("work_phone"), mobile: v("mobile"), language: $("language").value,
+    gstin: v("gstin"), pan: v("pan"), msme_registered: $("msme").checked, currency: $("currency").value,
+    addresses, contact_persons: rows("persons").filter(anyVal), bank_details: rows("banks").filter(anyVal),
+    custom_fields: pairs("custom"), reporting_tags: pairs("tags"), remarks: v("remarks")
+  };
+}
+function errText(d){
+  return typeof d === "string" ? d : Array.isArray(d) ? d.map(e => e.loc.slice(1).join(".") + ": " + e.msg).join("; ") : "Request failed";
+}
+$("save").onclick = async () => {
+  if(!$("display_name").value.trim()){ say("Enter a display name.", "err"); $("display_name").focus(); return; }
+  $("save").disabled = true; say("Saving…");
+  try{
+    const res = await fetch(base() + (editId ? "/" + editId : ""), {
+      method: editId ? "PUT" : "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body())
+    });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(errText(data.detail));
+    backToList(); await load(); say(editId ? "Changes saved." : "Saved. Ledger account ID: " + data.account_id, "ok");
+  }catch(e){ say(e.message, "err"); }
+  $("save").disabled = false;
+};
+$("del").onclick = async () => {
+  if(!confirm("Deactivate this " + (kind === "vendors" ? "vendor" : "customer") + "? Past entries are kept.")) return;
+  try{
+    const res = await fetch(base() + "/" + editId, {method: "DELETE"});
+    if(!res.ok) throw new Error(errText((await res.json().catch(() => ({}))).detail));
+    backToList(); await load(); say("Deactivated.", "ok");
+  }catch(e){ say(e.message, "err"); }
+};
+
+show("list"); load();
+</script>
+</body>
+</html>

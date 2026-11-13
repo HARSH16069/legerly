@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payment reminders</title>
+<style>
+:root{--bg:#f3f5f8;--card:#fff;--ink:#1c2433;--mute:#667085;--line:#d9dee7;--accent:#1f5fbf;--accent-ink:#fff;--bad:#c0362c;--warn:#a15c00;--ok:#1b7f4b;--badbg:#fdecea;--warnbg:#fff4e0}
+@media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#171c27;--ink:#e6e9f0;--mute:#98a2b3;--line:#2b3343;--accent:#5b9bff;--accent-ink:#0b1220;--bad:#ff7b70;--warn:#f0b35a;--ok:#4cc38a;--badbg:#3a1f1d;--warnbg:#3a2d17}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:18px;margin:28px 0 10px}
+.sub{color:var(--mute);margin-bottom:16px}
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;color:var(--mute);font-size:13px}
+input,select{padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font:inherit}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.stat b{display:block;font-size:22px;margin-top:2px}
+.stat.bad b{color:var(--bad)}
+.banner{background:var(--badbg);color:var(--bad);border:1px solid var(--bad);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mute);font-weight:600;font-size:13px}
+td.r,th.r{text-align:right}
+tr:last-child td{border-bottom:0}
+.pill{padding:2px 10px;border-radius:99px;font-size:13px;font-weight:600}
+.overdue{background:var(--badbg);color:var(--bad)}.due_today,.due_soon{background:var(--warnbg);color:var(--warn)}
+.empty{padding:22px;text-align:center;color:var(--mute)}
+button{border:1px solid var(--accent);background:none;color:var(--accent);border-radius:6px;padding:5px 12px;font:inherit;cursor:pointer}
+#msg{color:var(--bad);margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Payment reminders</h1>
+  <div class="sub" id="asof"></div>
+  <div class="ctl">
+    <label for="api">API address</label><input id="api" value="http://127.0.0.1:8000">
+    <label for="days">Show due within</label>
+    <select id="days"><option value="3">3 days</option><option value="7" selected>7 days</option><option value="15">15 days</option><option value="30">30 days</option></select>
+  </div>
+  <div id="msg" role="alert"></div>
+  <div id="banner" class="banner" hidden></div>
+  <div class="stats" id="stats"></div>
+
+  <h2>To collect from customers</h2>
+  <div class="card"><table><thead><tr><th>Customer</th><th>Invoice</th><th>Due date</th><th>Status</th><th class="r">Amount</th><th></th></tr></thead><tbody id="rec"></tbody></table><div class="empty" id="recE" hidden>Nothing to collect right now.</div></div>
+
+  <h2>To pay to vendors</h2>
+  <div class="card"><table><thead><tr><th>Vendor</th><th>Bill no.</th><th>Due date</th><th>Status</th><th class="r">Amount</th><th></th></tr></thead><tbody id="pay"></tbody></table><div class="empty" id="payE" hidden>Nothing to pay right now.</div></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const money = n => "₹" + Number(n || 0).toLocaleString("en-IN", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const api = () => $("api").value.replace(/\/$/, "");
+const label = i => i.status === "overdue" ? `Overdue by ${i.days_overdue} day${i.days_overdue === 1 ? "" : "s"}` : i.status === "due_today" ? "Due today" : `Due in ${i.days_left} days`;
+
+function fill(tbodyId, emptyId, list){
+  const tb = $(tbodyId); tb.innerHTML = "";
+  list.forEach(i => {
+    const tr = document.createElement("tr");
+    const cells = [i.party_name, i.invoice_no || "-", i.due_date];
+    cells.forEach(v => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
+    const st = document.createElement("td"), pill = document.createElement("span");
+    pill.className = "pill " + i.status; pill.textContent = label(i); st.appendChild(pill); tr.appendChild(st);
+    const am = document.createElement("td"); am.className = "r"; am.textContent = money(i.amount); tr.appendChild(am);
+    const ac = document.createElement("td"), b = document.createElement("button");
+    b.textContent = i.action === "collect" ? "Mark received" : "Mark paid";
+    b.onclick = () => markPaid(i.id);
+    ac.appendChild(b); tr.appendChild(ac); tb.appendChild(tr);
+  });
+  $(emptyId).hidden = list.length > 0;
+}
+
+async function load(){
+  $("msg").textContent = "";
+  try{
+    const r = await fetch(`${api()}/reminders?days=${$("days").value}`);
+    if(!r.ok) throw new Error("Could not load reminders");
+    const d = await r.json(), s = d.summary;
+    $("asof").textContent = "As of " + d.as_of;
+    $("stats").innerHTML = "";
+    [["To collect", s.to_collect, ""], ["Overdue to collect", s.to_collect_overdue, "bad"], ["To pay", s.to_pay, ""], ["Overdue to pay", s.to_pay_overdue, "bad"]]
+      .forEach(([l, v, c]) => { const e = document.createElement("div"); e.className = "stat " + (v > 0 ? c : ""); e.innerHTML = `<span>${l}</span><b>${money(v)}</b>`; $("stats").appendChild(e); });
+    $("banner").hidden = s.overdue_count === 0;
+    $("banner").textContent = `${s.overdue_count} payment${s.overdue_count === 1 ? " is" : "s are"} overdue.`;
+    fill("rec", "recE", d.receivables); fill("pay", "payE", d.payables);
+    document.title = (s.overdue_count ? `(${s.overdue_count}) ` : "") + "Payment reminders";
+  }catch(e){ $("msg").textContent = e.message + ". Check the API address and that the server is running."; }
+}
+
+async function markPaid(id){
+  if(!confirm("Mark this as settled and remove the reminder?")) return;
+  const r = await fetch(`${api()}/reminders/${id}/paid`, {method: "PATCH"});
+  if(!r.ok){ $("msg").textContent = "Could not update."; return; }
+  load();
+}
+$("days").onchange = load; $("api").onchange = load;
+load(); setInterval(load, 5 * 60 * 1000);
+</script>
+</body>
+</html>

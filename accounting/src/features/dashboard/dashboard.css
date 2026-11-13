@@ -1,0 +1,21 @@
+@keyframes dash-row-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes dash-orb { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-15px, -12px) scale(1.12); } }
+@keyframes dash-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes bar-wide { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes dash-spark { to { stroke-dashoffset: 0; } }
+
+.dash-orb { animation: dash-orb 9s ease-in-out infinite; }
+.dash-skeleton { background: linear-gradient(100deg, rgba(19,38,34,.045) 30%, rgba(19,38,34,.10) 50%, rgba(19,38,34,.045) 70%); background-size: 200% 100%; animation: dash-shimmer 1.4s linear infinite; }
+.dash-stat { isolation: isolate; }
+.dash-panel { transition: transform .3s ease, box-shadow .3s ease; }
+.dash-panel:hover { transform: translateY(-2px); }
+.bar { transform-box: fill-box; transform-origin: bottom; animation: bar-grow .9s cubic-bezier(.2,.8,.2,1) both; transition: opacity .2s, filter .2s; }
+.bar-group:hover .bar { opacity: .55; } .bar-group .bar:hover { opacity: 1; filter: brightness(1.12); }
+.bar-wide { transform-origin: left; animation: bar-wide .9s cubic-bezier(.2,.8,.2,1) both; }
+.dash-spark { stroke-dasharray: 400; stroke-dashoffset: 400; animation: dash-spark 1.6s .4s ease forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-orb, .dash-skeleton, .bar, .bar-wide, .dash-spark { animation: none !important; stroke-dashoffset: 0; }
+  .dash-stat, .dash-panel { transition: none !important; }
+}
